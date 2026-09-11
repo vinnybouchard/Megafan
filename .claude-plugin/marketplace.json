@@ -1,0 +1,24 @@
+{
+  "name": "megafan",
+  "owner": {
+    "name": "Vinny Bouchard",
+    "url": "https://github.com/vinnybouchard"
+  },
+  "metadata": {
+    "description": "Marketplace hosting the Megafan plugin."
+  },
+  "plugins": [
+    {
+      "name": "megafan",
+      "description": "Metadata for concert and live-music discs in a Plex library that runs no metadata agent. Researches catalogue numbers across MusicBrainz, Discogs, CDJapan and Wikipedia, applies dates, summaries, setlists and artwork, names chapters after songs, and builds English subtitles for Japanese discs.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Vinny Bouchard",
+        "url": "https://github.com/vinnybouchard"
+      },
+      "source": "./",
+      "category": "productivity",
+      "homepage": "https://github.com/vinnybouchard/Megafan"
+    }
+  ]
+}
