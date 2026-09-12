@@ -4,9 +4,10 @@
 where the filename is the only thing Plex knows, nothing fetches artwork, and
 every field you leave unlocked gets overwritten on the next scan.
 
-Built for a shelf of Japanese live DVDs and Blu-rays, which is the hard case:
-no agent, no artwork, catalogue numbers written three different ways, and half
-the sources in a language the databases transliterate inconsistently.
+Works for live releases from any band, anywhere. It was built around the
+awkward cases rather than the easy ones: no agent and no artwork, catalogue
+numbers written three different ways, sources that disagree about a release
+date, and imports that ship no English subtitle track at all.
 
 ## Install
 
@@ -19,7 +20,7 @@ the sources in a language the databases transliterate inconsistently.
 
 Then just say what you did:
 
-> *"I ripped a concert DVD"* · *"fix the metadata for the X Japan disc"* ·
+> *"I ripped a concert DVD"* · *"fix the metadata for this live Blu-ray"* ·
 > *"my Concerts library has no artwork or dates"*
 
 **Or use it without Claude Code.** The four tools are plain Python with no
@@ -45,9 +46,9 @@ So Megafan writes each field deliberately and locks it. Given a disc it will:
 3. **Find cover art**, and make you *look at it* before it goes on.
 4. **Apply** release year, release date, summary, setlist and poster — locked.
 5. **Name the chapters after the songs** and fill their thumbnails.
-6. **Handle English subtitles**, either installing a file you already have or
-   transcribing only the *spoken* spans of a concert so the songs are never fed
-   to the ASR.
+6. **Handle English subtitles** on a disc that ships none — either installing a
+   file you already have, or transcribing only the *spoken* spans of a concert
+   so the songs are never fed to the ASR.
 
 It is **assisted, not automatic**, on purpose. A catalogue number identifies a
 *release*, not a disc — and a two-disc set, a reissue, and a video-still cover

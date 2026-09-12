@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "megafan",
-      "description": "Metadata for concert and live-music discs in a Plex library that runs no metadata agent. Researches catalogue numbers across MusicBrainz, Discogs, CDJapan and Wikipedia, applies dates, summaries, setlists and artwork, names chapters after songs, and builds English subtitles for Japanese discs.",
+      "description": "Metadata for concert and live-music discs in a Plex library that runs no metadata agent. Researches catalogue numbers across MusicBrainz, Discogs, CDJapan and Wikipedia, applies dates, summaries, setlists and artwork, names chapters after songs, and builds English subtitles for discs that ship none.",
       "version": "1.0.0",
       "author": {
         "name": "Vinny Bouchard",
