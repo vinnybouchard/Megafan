@@ -87,6 +87,52 @@ without them.
 
 Full variable list in [`.env.example`](.env.example).
 
+## The rip log — how the catalogue number gets in
+
+The catalogue number is the disc's real identity, and the only moment it is free
+to obtain is **while someone is holding the case**. By the time a file is in
+Plex, nobody knows which of three pressings it came from.
+
+So the tools will read a small JSON file per rip, if you produce one. Point
+`RIP_LOG_DIR` at a directory of them. This is entirely optional — without it you
+pass `--catalog` by hand and everything else works the same.
+
+**Only three things are read**, however much else you put in the file:
+
+```json
+{
+  "catalog":  "LHXD-2004",
+  "headline": "Nightmare - Gianizm (2020)",
+  "files":    [{ "name": "Nightmare - Gianizm (2020).mkv", "bytes": 13199572245 }]
+}
+```
+
+* **`catalog`** — the number off the spine or the back panel, exactly as printed.
+  Do not tidy it: `KSB5 5734` on the case and `KSB5-5734` in the databases are
+  both fine, and the search APIs normalise it themselves.
+* **`files[].bytes`** — the exact size of each output file. **This is the match
+  key, not the title**, and that is the part worth copying if you write your own
+  producer. A byte count survives renaming and moving; a title does not. Matching
+  on the title has failed three times here for three unrelated reasons — a comma
+  inside a band's name, a bonus disc whose headline named a *different* disc of
+  the same set, and a doubled artist prefix. Exact equality on an integer is
+  immune to all three.
+* **`headline`** — whatever the person typed. Used only as a fallback when no
+  byte count matches.
+
+Two optional fields the skill will use if present: **`discNo`** and
+**`discsTotal`**, which answer "how many discs am I owed" without a single
+lookup. A `discsTotal: 2` with only one log present means a disc has not been
+ripped yet — worth knowing before you research a release you only half have.
+
+**Encoding:** the files are read as `utf-8-sig`, so a UTF-8 BOM is fine. Windows
+tooling writes one by default (`Set-Content -Encoding UTF8`), and a plain
+`json.load` would reject it.
+
+Anything can write these. A five-line shell script at the end of your own ripper
+will do, or you can write one by hand for a disc you already have. There is no
+dependency on any particular ripping tool.
+
 ## Running it by hand
 
 ```bash
