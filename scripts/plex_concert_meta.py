@@ -73,6 +73,11 @@ import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
+HERE_ = Path(__file__).resolve().parent
+if str(HERE_) not in sys.path:
+    sys.path.insert(0, str(HERE_))
+import mb_rate  # noqa: E402  (cross-process MusicBrainz throttle)
+
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 
@@ -97,9 +102,6 @@ MB_INTERVAL = 1.2
 # structurally rather than by guessing at the title.
 VIDEO_FORMATS = {"DVD", "DVD-Video", "Blu-ray", "Blu-ray Disc", "HD-DVD", "VHS"}
 
-_last_mb = 0.0
-
-
 def _get(url: str, ua: str = MB_UA, timeout: int = 25) -> bytes:
     req = urllib.request.Request(url, headers={"User-Agent": ua})
     with urllib.request.urlopen(req, timeout=timeout) as f:
@@ -107,18 +109,26 @@ def _get(url: str, ua: str = MB_UA, timeout: int = 25) -> bytes:
 
 
 def mb_get(path: str, **params) -> dict:
-    """One MusicBrainz call, rate limited to their stated 1 req/sec."""
-    global _last_mb
-    wait = MB_INTERVAL - (time.time() - _last_mb)
-    if wait > 0:
-        time.sleep(wait)
+    """One MusicBrainz call, rate limited to their stated 1 req/sec — across
+    PROCESSES, via `mb_rate.turn()`, because the megafan workers run
+    as separate agents and an in-process timestamp cannot see the other one.
+    A 503 is MB saying "slower", not "no such release": it is retried once
+    after their `Retry-After` (or 4 s), so a throttled call cannot come back
+    as an empty result."""
     params.setdefault("fmt", "json")
     url = f"{MB}/{path}?{urllib.parse.urlencode(params)}"
-    try:
-        data = json.loads(_get(url))
-    finally:
-        _last_mb = time.time()
-    return data
+    for attempt in (1, 2):
+        try:
+            with mb_rate.turn(MB_INTERVAL):
+                return json.loads(_get(url))
+        except urllib.error.HTTPError as e:
+            if e.code != 503 or attempt == 2:
+                raise
+            try:
+                wait = float(e.headers.get("Retry-After") or 4)
+            except ValueError:
+                wait = 4.0
+            time.sleep(max(wait, 4.0))
 
 
 # ----------------------------------------------------------------- plex ---

@@ -142,17 +142,27 @@ python3 scripts/plex_concert_meta.py --item 4842 --catalog AZBS-1015
 ```
 
 The full procedure — every step in order, and every trap that cost real time to
-find — is [`skills/megafan/SKILL.md`](skills/megafan/SKILL.md).
-That file is the skill *and* the manual; it is deliberately the only copy, so
-there is no second document to drift out of date. It reads fine as plain
-markdown whether or not you ever run an agent.
+find — is [`skills/megafan/SKILL.md`](skills/megafan/SKILL.md) plus the eight
+stage files beside it in [`skills/megafan/stages/`](skills/megafan/stages/).
+
+`SKILL.md` is the **coordinator**: it works out which run this is, finds the
+item, settles the catalogue number, and then spawns one worker agent per stage.
+Each stage file is a self-contained procedure for one job — research, cover
+art, reading the scans, subtitles, chapters, and so on — and a worker reads its
+own stage file and nothing else. Stages that share nothing run at the same
+time, which is most of them.
+
+These files are the skill *and* the manual; each is deliberately the only copy
+of its procedure, so there is no second document to drift out of date. They
+read fine as plain markdown whether or not you ever run an agent — start with
+`SKILL.md` and follow it into whichever stage you need.
 
 ## Where this came from
 
 These tools were carved out of a larger private project and are published as a
 standalone copy. Removed, because they only make sense inside that project: the
-steps that fed a personal Obsidian disc-catalogue wiki, and references to that
-project's own modules and conventions.
+steps that fed a personal Obsidian disc-catalogue wiki — a whole worker stage
+of them — and references to that project's own modules and conventions.
 
 Nothing else was changed. The documentation is the original — including every
 measured failure behind a rule, because the reasoning is the part that is

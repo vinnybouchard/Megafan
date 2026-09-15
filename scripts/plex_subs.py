@@ -549,8 +549,7 @@ def do_generate(args) -> int:
     if dest.exists() and not args.force:
         sys.exit(f"{dest.name} already exists (use --force)")
 
-    slug = re.sub(r"[^A-Za-z0-9]+", "-", Path(video).stem).strip("-")[:60]
-    work = WORK_ROOT / slug
+    work = WORK_ROOT / work_slug(video)
     work.mkdir(parents=True, exist_ok=True)
     audio = work / "audio.flac"
     tr_json = work / "transcript.json"
@@ -741,6 +740,48 @@ CASTS: dict[int, str] = {
     9296: "X JAPAN (then 'X'), 'Blue Blood Tour Bakuhatsu Sunzen GIG', Shibuya "
           "Kohkaido, March 1989. Members: Toshi (vocals), Yoshiki (drums), "
           "hide (guitar), Pata (guitar), Taiji (bass).",
+    # K-ON!! Live Event ~Come with Me!!~ (PCXE-50110), 2026-09-15. The main
+    # disc, the Encore Stage & Video Extras disc and the Title 00 featurette
+    # reel are one event and the same nine women, so all three rks share one
+    # block. ★ 17314/17315 are the SECOND set of keys those two extras have
+    # had: `plex_subs.py`'s own path-change lever re-mints an extra's rating
+    # key, and it did here (12793 -> 17314, 12794 -> 17315). If a future run
+    # re-muxes them the keys move again and this block silently stops
+    # applying to them — the symptom is `GENERIC_CAST` instructing the
+    # translator to drop every personal name, below.
+    **dict.fromkeys((12612, 17314, 17315),
+        "K-ON!! Live Event ~Come with Me!!~ (けいおん!! ライブイベント), Saitama "
+        "Super Arena, 20 Feb 2011. The performers are the VOICE ACTRESSES of "
+        "the anime K-ON!!, on stage as the in-universe band Ho-kago Tea Time "
+        "(放課後ティータイム, 'HTT'). They switch constantly between speaking AS "
+        "THEMSELVES and speaking IN CHARACTER, and they address each other by "
+        "real name, by character name and by nickname - all three are correct "
+        "and none is a transcription artifact. Who is who:\n"
+        "  Aki Toyosaki (豊崎愛生, 'Aki-chan') = Yui Hirasawa (平沢唯), "
+        "guitar/vocals.\n"
+        "  Yoko Hikasa (日笠陽子) = Mio Akiyama (秋山澄), bass/vocals. The crowd "
+        "calls her 'Hikasha' (ひかしゃ); ASR mishears it as ピカシャ/ピカサ, so "
+        "'Pikasha' is never right.\n"
+        "  Satomi Sato (佐藤聡美, 'Satton') = Ritsu Tainaka (田井中律), drums.\n"
+        "  Minako Kotobuki (寿美菜子) = Tsumugi Kotobuki (琴吹紬), keyboards - "
+        "the character is called 'Mugi'.\n"
+        "  Ayana Taketatsu (竹達彩奈) = Azusa Nakano (中野梓), guitar - the "
+        "character is called 'Azu-nyan' (あずにゃん).\n"
+        "  Asami Sanada (真田アサミ) = Sawako Yamanaka (山中さわ子), the teacher, "
+        "'Sawa-chan'.\n"
+        "  Madoka Yonezawa (米澤円) = Ui Hirasawa (平沢憂), Yui's younger "
+        "sister.\n"
+        "  Chika Fujito (藤東知夏) = Nodoka Manabe (真鍋和).\n"
+        "  Yoriko Nagata (永田依子) = Jun Suzuki (鈴木純).\n"
+        "Song titles are K-ON!! songs and have official spellings - keep "
+        "'Cagayake! GIRLS', 'Don't say \u201clazy\u201d', 'GO! GO! MANIAC', "
+        "'Listen!!', 'Utauyo!!MIRACLE', 'NO,Thank You!', 'Fuwa Fuwa Time', "
+        "'U&I', 'Tenshi ni Fureta yo!', 'Gohan wa Okazu', 'Singing!', "
+        "'Pure Pure Heart', 'Honey Sweet Tea Time', 'Samidare 20 Love'. The "
+        "club they are in is the Light Music Club (軽音部, 'keion-bu') - the "
+        "crowd chants it back. Two segments are SCRIPTED DRAMA SKITS performed "
+        "live in character: keep those in character voice. Register is young, "
+        "warm and excitable."),
 }
 GENERIC_CAST = (
     "IMPORTANT: Japanese ASR of this material hallucinates TV-caption speaker "
@@ -830,8 +871,55 @@ def drop_song_hooks(cues: list[dict], min_chars: int = 6, min_hits: int = 3,
     return dropped
 
 
+def work_slug(video: str) -> str:
+    """A work-directory name for ONE VIDEO FILE. Must be UNIQUE PER FILE.
+
+    `mc_slug`'s sibling, and it does NOT share its "short names are returned
+    unchanged" shortcut, because the collision here is the opposite shape.
+    `mc_slug` keys on an item TITLE, which is long and collides only when
+    truncated; this keys on a FILE STEM, and the stems that collide are the
+    SHORT ones — MakeMKV names every unlabelled title `Title 00.mkv`,
+    `Title 01.mkv`, so two discs each carrying one produce the same `Title-01`
+    with nothing to truncate. `/mnt/media/.subs-work/` already held `Title-01`
+    and `Title-07` when this was written.
+
+    The failure is the one `mc_slug` documents, one lane over and worse for
+    being silent: the second disc finds the first disc's `audio.flac` already
+    there, reuses it, and transcribes the WRONG DISC — then `--install` writes
+    those subtitles onto this disc's video. Nothing in the run reads as an
+    error, because every step succeeds.
+
+    So the disambiguator is unconditional and keys on the RESOLVED PATH, which
+    is the only thing that actually identifies the file. The cost is that work
+    dirs made before 2026-09-15 are orphaned (they are a cache — audio and a
+    transcript — so the only loss is re-doing the extraction; `.subs-work` can
+    simply be emptied).
+    """
+    stem = re.sub(r"[^A-Za-z0-9]+", "-", Path(video).stem).strip("-")
+    return stem[:51].rstrip("-") + "-" + hashlib.sha1(
+        str(Path(video).resolve()).encode("utf-8")).hexdigest()[:8]
+
+
 def mc_slug(title: str) -> str:
-    return re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")[:60]
+    """A work-directory name for one item. Must be UNIQUE PER ITEM.
+
+    A bare `[:60]` is not: measured 2026-09-14 on MKPB-2002, the cut landed
+    just before the disc number, so `... [Disc 2 - Second Half & Encores]` and
+    `... [Disc 3 - Hong Kong, Taiwan & Sapporo]` both came out
+    `hatsune-miku-...-in-kansai-2013-dis`. Disc 3 then found disc 2's
+    `audio16k.flac` already there, reused it (`audio 221 MB ... (0s)` against
+    its own 69.3-minute runtime) and reported disc 2's spans as its own -
+    which, with `--install`, writes one disc's MC onto the other disc's video.
+    Nothing in the run reads as an error.
+
+    Short slugs are returned unchanged so the existing work dirs stay valid;
+    only a name long enough to be truncated pays for a disambiguator.
+    """
+    s = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
+    if len(s) <= 60:
+        return s
+    return s[:51].rstrip("-") + "-" + hashlib.sha1(
+        title.encode("utf-8")).hexdigest()[:8]
 
 
 def mc_run_gpu(script: str, argv: list[str], timeout: int) -> str:
@@ -1766,6 +1854,134 @@ def do_mc(args) -> int:
     return 0
 
 
+# ---------------------------------------------------------------- readable ---
+#: A cue nobody can read is a cue that is not there. whisperx hands back long
+#: segments and the translator keeps them whole, so a staged file routinely
+#: carries 300+ characters held for 30 s. These are the two ceilings a reader
+#: can actually keep up with; the split only ever happens INSIDE a cue's own
+#: span, so nothing is re-timed outside the window it was spoken in.
+READABLE_MAX_S, READABLE_MAX_CHARS = 7.0, 84
+
+#: `drop_hallucinations` filters `HALLUCINATED_JA`, which is Japanese. The
+#: trailing artifact whisper leaves on an English translation is Latin — `by H.`
+#: on one of these discs, a sibling of "Subtitles by …" — so it needs its own
+#: list. Only ever dropped from the END, and only when short, so a real closing
+#: line is never mistaken for one.
+#:
+#: NOT `HALLUCINATED_EN`, which is a TUPLE of substrings the MC lane iterates
+#: 1000 lines above this. Binding both to that one name shadowed the tuple, and
+#: `do_mc_disc`'s `for h in HALLUCINATED_EN` then raised `'re.Pattern' object is
+#: not iterable` on every disc that got as far as producing English cues — after
+#: the GPU work and after the translation, one line before the srt was written.
+#: `tests/test_plex_subs_mc_names.py` pins the two names apart.
+TRAILING_ARTIFACT_EN = re.compile(
+    r"^(by\s+\w{1,3}\.?|subtitles?\b.*|amara\.org.*|thanks? for watching.*)$", re.I)
+
+#: A sentence ENDS WITH ITS CLOSING QUOTE. Written first as a lookbehind
+#: SEPARATOR, `(?<=[.!?…])[)"']*\s+` ate the quote off `…idol!" That would…` and
+#: silently changed the text — and Python's lookbehind must be fixed width
+#: anyway, so it is a finder. `split_sentences` round-trips, and `make_readable`
+#: asserts that rather than trusting it.
+_SENT_END = re.compile(r"""[.!?…][)"']{0,2}(?=\s|$)""")
+
+
+def split_sentences(text: str) -> list[str]:
+    """`text` cut after each sentence's closing punctuation. Pure, lossless."""
+    out, at = [], 0
+    for m in _SENT_END.finditer(text):
+        out.append(text[at:m.end()].strip())
+        at = m.end()
+    if text[at:].strip():
+        out.append(text[at:].strip())
+    return [x for x in out if x]
+
+
+def split_long_cue(cue: dict, max_s: float = READABLE_MAX_S,
+                   max_chars: int = READABLE_MAX_CHARS) -> list[dict]:
+    """One over-long cue as several, sharing its OWN span. Pure.
+
+    Each piece gets the fraction of the original span its own length earns, so
+    the last piece ends exactly where the original did and no piece can drift
+    outside the window the line was spoken in. A cue with nothing to split on
+    comes back unchanged — better one long cue than a cut mid-clause.
+    """
+    if (cue["end"] - cue["start"]) <= max_s and len(cue["text"]) <= max_chars:
+        return [dict(cue)]
+    parts = split_sentences(cue["text"])
+    if len(parts) < 2:
+        return [dict(cue)]
+    merged: list[str] = []
+    for p in parts:                     # a stray word is not a cue
+        if merged and len(merged[-1]) < 25:
+            merged[-1] += " " + p
+        else:
+            merged.append(p)
+    total = sum(len(p) for p in merged) or 1
+    span, out, at = cue["end"] - cue["start"], [], cue["start"]
+    for i, p in enumerate(merged):
+        end = (cue["end"] if i == len(merged) - 1
+               else min(at + span * len(p) / total, cue["end"]))
+        out.append({"start": at, "end": end, "text": p})
+        at = end
+    return out
+
+
+def make_readable(cues: list[dict], min_s: float = 0.6) -> tuple[list[dict], int]:
+    """Split, de-overlap and de-credit a translated cue list. `(cues, dropped)`.
+
+    Pure, and it REFUSES rather than write a file whose text changed: the whole
+    point is a reformat, so a transformation that loses a character is a bug and
+    must not reach the disk quietly.
+    """
+    cues = [dict(c) for c in cues]
+    dropped = 0
+    while cues and TRAILING_ARTIFACT_EN.match(cues[-1]["text"].strip()) \
+            and len(cues[-1]["text"]) <= 30:
+        cues.pop()
+        dropped += 1
+    kept = re.sub(r"\s+", "", "".join(c["text"] for c in cues))
+    out: list[dict] = []
+    for c in cues:
+        out.extend(split_long_cue(c))
+    for i in range(len(out) - 1):
+        if out[i]["end"] > out[i + 1]["start"]:          # clamp forward only
+            out[i]["end"] = out[i + 1]["start"]
+        if out[i]["end"] - out[i]["start"] < min_s:
+            out[i]["end"] = min(out[i]["start"] + min_s, out[i + 1]["start"])
+    after = re.sub(r"\s+", "", "".join(c["text"] for c in out))
+    if after != kept:
+        raise RuntimeError("readable: the text changed — refusing to write")
+    return out, dropped
+
+
+def do_readable(a) -> int:
+    """Rewrite a staged srt into readable cues, BESIDE the original.
+
+    Never in place. A reformat has no business being destructive, and the first
+    version of this was a loose glob that rewrote nine other discs' staged
+    output; nothing was lost, but only because the transform is text-lossless.
+    """
+    src = Path(a.srt)
+    if not src.is_file():
+        print(f"error: no such file: {src}", file=sys.stderr)
+        return 1
+    cues = parse_srt(src.read_text(encoding="utf-8-sig"))
+    if not cues:
+        print(f"error: no cues in {src}", file=sys.stderr)
+        return 1
+    out, dropped = make_readable(cues)
+    for c in out:
+        c["text"] = wrap_line(c["text"])
+    dest = Path(a.out) if a.out else src.with_name(
+        src.name.replace(".srt", ".readable.srt"))
+    write_srt(out, dest)
+    print(f"  {len(cues)} -> {len(out)} cues; dropped {dropped} credit cue(s)")
+    print(f"  longest {max(c['end']-c['start'] for c in out):.1f}s, "
+          f"widest {max(len(c['text']) for c in out)} chars")
+    print(f"  -> {dest}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -1800,6 +2016,11 @@ def main() -> int:
                    help="leave the staged audio on the PC")
     p.add_argument("--timeout", type=int, default=7200)
     p.set_defaults(func=do_generate)
+
+    p = sub.add_parser("readable", help="split over-long cues in a staged srt")
+    p.add_argument("--srt", required=True)
+    p.add_argument("--out", help="default: <name>.readable.srt beside the input")
+    p.set_defaults(func=do_readable)
 
     p = sub.add_parser("mc", help="MC-only subs: find the talking, skip the songs")
     p.add_argument("--item", action="append", help="Plex ratingKey (repeatable)")
